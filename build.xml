@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar_hadoop" name="Create Runnable Jar for Project rule-learner-new">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar_hadoop" depends="create_run_jar">
+        <jar destfile="./HadoopRuleLearner.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="ruleLearnerNew.HadoopRuleLearner"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="./bin"/>
+        	<!--
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/junit-4.9b2.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/hadoop-0.20.2-core.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/hadoop-0.20.2-tools.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/lib/commons-logging-api-1.0.4.jar"/>
+            -->
+        </jar>
+    </target>
+    <target name="create_run_jar" depends="compile">
+        <jar destfile="./RuleLearner.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="ruleLearnerNew.RuleLearner"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="./bin"/>
+        	<!--
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/junit-4.9b2.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/lib/commons-logging-api-1.0.4.jar"/>
+            -->
+        </jar>
+    </target>
+	<target name="compile" depends="">
+        <!-- keep debugging on for backtraces -->
+		<javac compiler="javac1.5" srcdir="./src" destdir="./bin" classpath="./hadoop-0.20.1-core.jar" debug="on" encoding="utf8" />
+	</target>
+</project>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="tst"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/me/My Documents/Descargas/junit-4.9b2.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/hadoop-0.20.2-core.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/hadoop-0.20.2-tools.jar"/>
+	<classpathentry kind="lib" path="C:/Documents and Settings/me/My Documents/Descargas/hadoop-0.20.2/lib/commons-logging-api-1.0.4.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

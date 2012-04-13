@@ -1,0 +1,2 @@
+(A (B (C c) (D d)) (E (F (G g) (H h)) (I (J j) (K k))))
+(A (B b) (C (D d) (E e)) (F f))
