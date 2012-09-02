@@ -408,6 +408,40 @@ public class ParseNodeRulePart {
 		return "G";
 	}
 	
+	public String partToString(List<ParseNode> nodeSet, List<ParseNode> src, List<ParseNode> tgt, 
+			List<Integer> srcIndices, List<Integer> tgtIndices, List<Integer> mapIndices)
+	{
+		StringBuilder part = new StringBuilder();
+		
+		for (int i = 0; i < nodeSet.size(); i++)
+		{
+			ParseNode node = nodeSet.get(i);
+			
+			if (node.isTerminal())
+			{
+				part.append(node.getCategory());
+				part.append(" ");
+			}
+			else if (!(node instanceof NullParseNode))
+			{
+				part.append('[');
+				
+				int node1Index = (srcIndices == null) ? i : srcIndices.get(i);
+				int node2Index = (tgtIndices == null) ? i : tgtIndices.get(i);
+				ParseNode node1 = src.get(node1Index);
+				ParseNode node2 = tgt.get(node2Index);
+				
+				part.append(node1);
+				part.append("::");
+				part.append(node2);
+				part.append(',');
+				part.append(mapIndices.get(i));
+				part.append("] ");
+			}
+		}
+		return part.toString();
+	}
+	
 	@Override
 	public String toString()
 	{
@@ -418,99 +452,72 @@ public class ParseNodeRulePart {
 	{
 		return toString( "|||", sourceFirst);
 	}
+	
 	public String toString(String delim)
 	{
 		return toString(delim, true);
 	}
 	
 	public String toString(String delim, boolean sourceFirst)
-	{
-		int cnt = 1; 
-		StringBuilder part1 = new StringBuilder();
+	{		
+		List<ParseNode> src, tgt;
+		src = srcPart;
+		tgt = tgtPart;
 		
-		List<ParseNode> first, second;
-		if(sourceFirst)
+		ArrayList<Integer> mapIndex = new ArrayList<Integer>(src.size()); // src index to cnt
+		ArrayList<Integer> backwardsMapIndex = new ArrayList<Integer>(tgt.size()); // tgt index to cnt
+		ArrayList<Integer> mapNodeIndex = new ArrayList<Integer>(src.size()); // src index to tgt index
+		ArrayList<Integer> backwardsMapNodeIndex = new ArrayList<Integer>(tgt.size()); // tgt index to src index
+		
+		for (int i = 0; i < src.size(); i++)
 		{
-			first = srcPart;
-			second = tgtPart;
-		}
-		else
-		{
-			first = tgtPart;
-			second = srcPart;
+			mapIndex.add(-1);
+			mapNodeIndex.add(-1);
 		}
 		
-		int size = Math.max(second.size(), first.size());
-		ArrayList<Integer> backwardsMapIndex = new ArrayList<Integer>(size);
-		ArrayList<Integer> backwardsMapNodeIndex = new ArrayList<Integer>(size);
-		
-		for (int i = 0; i < size; i++)
+		for (int i = 0; i < tgt.size(); i++)
 		{
 			backwardsMapIndex.add(-1);
 			backwardsMapNodeIndex.add(-1);
 		}
-		
-		for (int i = 0; i < first.size(); i++)
+	
+		for (int i = 0; i < src.size(); i++)
 		{
-			ParseNode node = first.get(i);
-			if (node.isTerminal())
+			ParseNode node = src.get(i);
+			if(!node.isTerminal() && !(node instanceof NullParseNode))
 			{
-				part1.append(node.getCategory());
-				part1.append(" ");
-			}
-			else if (!(node instanceof NullParseNode))
-			{
-				part1.append('[');
-				
 				Integer node2Index = reorderList.fromSource(i).get(0);
-				
-				ParseNode node2 = second.get(node2Index);
-				
-				part1.append(first.get(i));
-				part1.append("::");
-				part1.append(node2);
-				part1.append(',');
-				part1.append(cnt);
-				part1.append("] ");
-				
-				backwardsMapIndex.set(node2Index, cnt);
+				mapNodeIndex.set(i, node2Index);
 				backwardsMapNodeIndex.set(node2Index, i);
+			}
+		}
+		
+		int cnt = 1; 
+		List<ParseNode> nodeSet = (sourceFirst) ? src : tgt;
+		for (int i = 0; i < nodeSet.size(); i++)
+		{
+			ParseNode node = nodeSet.get(i);
+			if(!node.isTerminal() && !(node instanceof NullParseNode))
+			{
+				Integer node1Index = (sourceFirst) ? i : backwardsMapNodeIndex.get(i);
+				Integer node2Index = (sourceFirst) ? mapNodeIndex.get(i) : i;
+				mapIndex.set(node1Index, cnt);
+				backwardsMapIndex.set(node2Index, cnt);
 				cnt++;
 			}
 		}
 		
-		StringBuilder part2 = new StringBuilder();
-		
-		for (int i = 0; i < second.size(); i++)
+		StringBuilder part1, part2;
+		if(sourceFirst)
 		{
-			ParseNode node = second.get(i);
-			
-			if (node.isTerminal())
-			{
-				part2.append(node.getCategory());
-				part2.append(' ');
-			}
-			else if (!(node instanceof NullParseNode))
-			{
-				part2.append('[');
-				int node1Index = backwardsMapNodeIndex.get(i);
-				ParseNode node1 = new NullParseNode();
-				try
-				{
-					node1 = first.get(node1Index);
-				}
-				catch(Exception e)
-				{
-					System.out.println("exception");
-				}
-				part2.append(node1);
-				part2.append("::");
-				part2.append(second.get(i));
-				part2.append(",");
-				part2.append(backwardsMapIndex.get(i));
-				part2.append("] ");
-				cnt++;
-			}
+			part1 = new StringBuilder(this.partToString(src, src, tgt, null, mapNodeIndex, mapIndex));
+			part2 = new StringBuilder(this.partToString(tgt, src, tgt, backwardsMapNodeIndex, null, backwardsMapIndex));
+		}
+		else
+		{
+			// TODO: Must re-sort backwards/forwards map index to ensure part1 is well ordered
+			part1 = new StringBuilder(this.partToString(tgt, tgt, src, null, backwardsMapNodeIndex, backwardsMapIndex));
+			part2 = new StringBuilder(this.partToString(src, tgt, src, mapNodeIndex, null, mapIndex));
 		}
 	
 		String result = part1.toString().trim() + delim 
@@ -535,30 +542,23 @@ public class ParseNodeRulePart {
 		
 		for (int i = 0; i < src.size(); i++)
 		{
-			Integer node2Index = reorderList.fromSource(i).get(0);
-			ParseNode node = sourceFirst ? src.get(i) : tgt.get(node2Index);
+			ParseNode node = src.get(i);
 			if (!node.isTerminal() && 
 			    !(node instanceof NullParseNode))
 			{
-				if (node.isReal())
-				{
-					str+= "O";
-				}
-				else
-				{
-					str+= "V";
-				}
-			
-				ParseNode node2 = sourceFirst ? tgt.get(node2Index) : src.get(i);
+				Integer node2Index = reorderList.fromSource(i).get(0);
+				ParseNode node2 = tgt.get(node2Index);
 				
-				if (node2.isReal())
-				{
-					str+= "O ";
-				}
+				if ((node.isReal() && sourceFirst) || (node2.isReal() && !sourceFirst))
+					str+= "O";
 				else
-				{
-					str+= "V ";
-				}
+					str+= "V";
+				
+				if ((node2.isReal() && sourceFirst) || (node.isReal() && !sourceFirst))
+					str+= "O";
+				else
+					str+= "V";
+				str += " ";
 			}
 		}
 	
