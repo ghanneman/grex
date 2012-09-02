@@ -68,6 +68,23 @@ public class ExtractedRule
 		return str.trim();
 	}
 	
+	public String toReversedString()
+	{
+		String str = "";
+		
+		str += rhs.getType() + " ||| ";
+		
+		str += "[" + tgtLHS + "::" + srcLHS + "]" + DELIM;
+		
+		str += rhs.toString(DELIM, false);
+		
+		str += DELIM + tgtLHS.getNodeAlignCategory() + srcLHS.getNodeAlignCategory();
+		
+		str += " " + rhs.getAlignTypeString(false);
+		
+		return str.trim();
+	}
+	
 	@Override
 	public boolean equals(Object o)
 	{

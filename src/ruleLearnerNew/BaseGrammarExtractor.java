@@ -22,11 +22,13 @@ public class BaseGrammarExtractor implements GrammarExtractor
 
 	public BaseGrammarExtractor(int maxGrammarRuleSize, 
 								int maxPhraseRuleSize,
-			 					boolean allowTriangularRules)
+			 					boolean allowTriangularRules,
+			 					boolean minimalRulesOnly)
 	{
 		this.maxGrammarRuleSize = maxGrammarRuleSize;
 		this.maxPhraseRuleSize = maxPhraseRuleSize;
 		this.allowTriangularRules = allowTriangularRules;
+		this.minimalRulesOnly = minimalRulesOnly;
 	}
 
 	// FUNCTIONS: ///////////////////////////////////////////////////////////
@@ -40,7 +42,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 		NodeAlignmentType[] typeArray = {NodeAlignmentType.T2T,NodeAlignmentType.TS2T,
 										 NodeAlignmentType.T2TS,NodeAlignmentType.SRC_GROWN,
 										 NodeAlignmentType.TGT_GROWN,NodeAlignmentType.TS2TS, 
-										 NodeAlignmentType.T2S, NodeAlignmentType.S2T };
+										 NodeAlignmentType.T2S, NodeAlignmentType.S2T};
 		
 		for (NodeAlignmentType type : typeArray)
 		{
@@ -112,13 +114,12 @@ public class BaseGrammarExtractor implements GrammarExtractor
 		}
 		
 		Set<ParseNode> nodeAlignments = node1.getNodeAlignments(lhsTypes);
-		
 		for(ParseNode aligned : nodeAlignments)
 		{		
 			// Now we have to build the right hand-side of the rule,
 			// but this is really just the composition of all rules
 			// that already exist its children's rules.
-			
+
 			if (!node1.isLhs())
 			{
 				ExtractedRule rule = new ExtractedRule(node1, 
@@ -128,12 +129,17 @@ public class BaseGrammarExtractor implements GrammarExtractor
 				node1.addRule(rule);
 			}
 			else
-			{
+			{	
 				for (List<ParseNode> children : childrenLists)
 				{
+					// TODO: We can check for many-to-one alignments here.
+					// Simply check each slice of children
+					// and see if their alignments map to a single target node.
+					
 					ExtractedRule rule;	
 					Collection<ParseNodeRulePart> rhsSides = 
 						 getRhs(children, aligned, side1IsSrc, rhsTypes);
+
 					for (ParseNodeRulePart rhs : rhsSides)
 					{	
 						if (rhs.spansMatch(node1, aligned) 
@@ -179,7 +185,6 @@ public class BaseGrammarExtractor implements GrammarExtractor
 		    ParseNode alignedNode, boolean side1isSrc, 
 		    Collection<NodeAlignmentType> types)
 	{
-
 		List<ParseNode> unalignedTerminals = 
 			alignedNode.getUnalignedTerminals();
 		
@@ -207,17 +212,18 @@ public class BaseGrammarExtractor implements GrammarExtractor
                      side1isSrc, 
                      types,
                      allowTriangularRules,
+                     minimalRulesOnly,
                      alignedNode);
 			
 			ParseNode nextGen = child1;
-			while (nextGen.numChildren() == 1)
+			while (nextGen.numChildren() == 1 && !minimalRulesOnly)
 			{
 				nextGen = nextGen.getChildren().get(0);
 				subExpansions.addAll(nextGen.getRuleAlignments(
-													 maxGrammarRuleSize,
-													 maxPhraseRuleSize,
-					                                 side1isSrc, 
-					                                 allowTriangularRules));
+									maxGrammarRuleSize,
+									maxPhraseRuleSize,
+									side1isSrc, 
+									allowTriangularRules));
 			}
 			
 			Collection<ParseNodeRulePart> parts = 
@@ -232,12 +238,14 @@ public class BaseGrammarExtractor implements GrammarExtractor
 				else
 				{
 					expansions = new ArrayList<ParseNodeRulePart>(subExpansions.size());
+					
 					for (ParseNodeRulePart part : subExpansions)
 					{ 
 						if(!part.contains(alignedNode, side1isSrc))
 						{
-							ParseNodeRulePart expandedPart = 
-								part.getWithUnalignedAdded(unalignedTerminals);
+							ParseNodeRulePart expandedPart = part;
+							if(remaining == 1)
+								expandedPart = part.getWithUnalignedAdded(unalignedTerminals);
 							if (expandedPart != null)
 							{
 								expansions.add(expandedPart);
@@ -249,7 +257,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 			else 
 			{
 				for (ParseNodeRulePart base : expansions)
-				{				
+				{
 					for (ParseNodeRulePart expansion : subExpansions)
 					{
 						ParseNodeRulePart combined;
@@ -265,14 +273,10 @@ public class BaseGrammarExtractor implements GrammarExtractor
 															true);
 							}
 							else
-							{
 								combined = base.combineWith(expansion, false);
-							}
 							
 							if (combined != null)
-							{
 								parts.add(combined);
-							}
 						}
 					}
 				}
@@ -540,4 +544,5 @@ public class BaseGrammarExtractor implements GrammarExtractor
 	private int maxGrammarRuleSize;
 	private int maxPhraseRuleSize;
 	private boolean allowTriangularRules;
+	private boolean minimalRulesOnly;
 }

@@ -36,6 +36,9 @@ public class RuleLearnerMapper extends Mapper<LongWritable, Text, LongWritable, 
 		boolean allowTriangular = 
 			Boolean.parseBoolean(getOpt("ALLOW_TRIANGULAR", context));
 		
+		boolean minimalRulesOnly = 
+				Boolean.parseBoolean(getOpt("MINIMAL_RULES_ONLY", context));
+		
 		outputAligns = Boolean.parseBoolean(getOpt("OUTPUT_ALIGNS", context));
 
 		sentences = context.getCounter("COUNT", "Sentences");
@@ -44,7 +47,8 @@ public class RuleLearnerMapper extends Mapper<LongWritable, Text, LongWritable, 
 		nodeAligner = new VamshiNodeAligner(maxVirtualNodeComponents);
 		grammarExtractor = new BaseGrammarExtractor(maxGrammarRuleSize, 
 													maxPhraseRuleSize, 
-													allowTriangular);
+													allowTriangular,
+													minimalRulesOnly);
 	}
 
 	@Override

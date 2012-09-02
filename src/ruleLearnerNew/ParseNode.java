@@ -1042,9 +1042,9 @@ public class ParseNode implements Comparable<ParseNode>
 	 */
 	public Collection<ParseNodeRulePart> getRuleAlignments(
 			int maxGrammar, int maxPhrase, boolean side1isSrc, 
-			Collection<NodeAlignmentType> types, boolean allowLhsNode, 
-			ParseNode lhsNode)
-	{		
+			Collection<NodeAlignmentType> types, boolean allowLhsNode,
+			boolean minimalRulesOnly, ParseNode lhsNode)
+	{	
 		if (rhsCollection != null)
 		{
 			return rhsCollection;
@@ -1052,12 +1052,15 @@ public class ParseNode implements Comparable<ParseNode>
 		
 		rhsCollection = new HashSet<ParseNodeRulePart>();
 
-		for (ExtractedRule rule : rules)
+		if(!minimalRulesOnly)
 		{
-			ParseNodeRulePart part = rule.getRhs();
-			if (part.getMaxPhraseComponents() > 0)
+			for (ExtractedRule rule : rules)
 			{
-				rhsCollection.add(rule.getRhs());
+				ParseNodeRulePart part = rule.getRhs();
+				if (part.getMaxPhraseComponents() > 0)
+				{
+					rhsCollection.add(rule.getRhs());
+				}
 			}
 		}
 		

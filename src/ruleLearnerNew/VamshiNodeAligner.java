@@ -27,7 +27,7 @@ public class VamshiNodeAligner implements NodeAligner
 
 	
 	// FUNCTIONS: ///////////////////////////////////////////////////////////
-
+	
 	/**
 	 * Top-level function for aligning nodes.
 	 *
@@ -69,7 +69,7 @@ public class VamshiNodeAligner implements NodeAligner
 				  			  false, true, nodeAligns);
 		
 		computeTs2TsAlignments(srcRoot, tgtRoot, srcUnaligned, tgtUnaligned, nodeAligns);
-
+		
 		// Return list of aligned nodes to be sent on to rule extraction:
 		return nodeAligns;
 	}
@@ -224,14 +224,14 @@ public class VamshiNodeAligner implements NodeAligner
 						node.addNodeAlignment(NodeAlignmentType.P2T, node1);
 					}
 				}
-//				else
-//				{
-//					for (ParseNode node : getTerminalAligns(node1, tree2))
-//					{
-//						node1.addNodeAlignment(NodeAlignmentType.P2T, node);
-//						node.addNodeAlignment(NodeAlignmentType.T2P, node1);
-//					}
-//				}
+				/*else
+				{
+					for (ParseNode node : getTerminalAligns(node1, tree2))
+					{
+						node1.addNodeAlignment(NodeAlignmentType.P2T, node);
+						node.addNodeAlignment(NodeAlignmentType.T2P, node1);
+					}
+				}*/
 			}
 		}
 

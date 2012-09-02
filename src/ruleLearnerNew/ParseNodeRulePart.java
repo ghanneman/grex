@@ -215,7 +215,7 @@ public class ParseNodeRulePart {
 			   srcSpan.getEnd() == src.getSpanEnd();
 			
 	}
-	
+
 	public static ParseNodeRulePart combineParts(ParseNodeRulePart left, 
 									ParseNodeRulePart right, 
 									List<ParseNode> extraAligned,
@@ -268,7 +268,7 @@ public class ParseNodeRulePart {
 		{
 			maxSize = left.maxGrammarComponents;
 		}
-		
+	
 		if ( newSrcRepresentation.size() > maxSize 
 		     || newTgtRepresentation.size() > maxSize)
 		{
@@ -411,19 +411,36 @@ public class ParseNodeRulePart {
 	@Override
 	public String toString()
 	{
-		return toString("|||");
+		return toString("|||", true);
 	}
 	
+	public String toString(boolean sourceFirst)
+	{
+		return toString( "|||", sourceFirst);
+	}
 	public String toString(String delim)
+	{
+		return toString(delim, true);
+	}
+	
+	public String toString(String delim, boolean sourceFirst)
 	{
 		int cnt = 1; 
 		StringBuilder part1 = new StringBuilder();
 		
-		List<ParseNode> src, tgt;
-		src = srcPart;
-		tgt = tgtPart;
+		List<ParseNode> first, second;
+		if(sourceFirst)
+		{
+			first = srcPart;
+			second = tgtPart;
+		}
+		else
+		{
+			first = tgtPart;
+			second = srcPart;
+		}
 		
-		int size = Math.max(tgt.size(), src.size());
+		int size = Math.max(second.size(), first.size());
 		ArrayList<Integer> backwardsMapIndex = new ArrayList<Integer>(size);
 		ArrayList<Integer> backwardsMapNodeIndex = new ArrayList<Integer>(size);
 		
@@ -433,9 +450,9 @@ public class ParseNodeRulePart {
 			backwardsMapNodeIndex.add(-1);
 		}
 		
-		for (int i = 0; i < src.size(); i++)
+		for (int i = 0; i < first.size(); i++)
 		{
-			ParseNode node = src.get(i);
+			ParseNode node = first.get(i);
 			if (node.isTerminal())
 			{
 				part1.append(node.getCategory());
@@ -447,9 +464,9 @@ public class ParseNodeRulePart {
 				
 				Integer node2Index = reorderList.fromSource(i).get(0);
 				
-				ParseNode node2 = tgt.get(node2Index);
+				ParseNode node2 = second.get(node2Index);
 				
-				part1.append(src.get(i));
+				part1.append(first.get(i));
 				part1.append("::");
 				part1.append(node2);
 				part1.append(',');
@@ -464,9 +481,9 @@ public class ParseNodeRulePart {
 		
 		StringBuilder part2 = new StringBuilder();
 		
-		for (int i = 0; i < tgt.size(); i++)
+		for (int i = 0; i < second.size(); i++)
 		{
-			ParseNode node = tgt.get(i);
+			ParseNode node = second.get(i);
 			
 			if (node.isTerminal())
 			{
@@ -480,7 +497,7 @@ public class ParseNodeRulePart {
 				ParseNode node1 = new NullParseNode();
 				try
 				{
-					node1 = src.get(node1Index);
+					node1 = first.get(node1Index);
 				}
 				catch(Exception e)
 				{
@@ -488,7 +505,7 @@ public class ParseNodeRulePart {
 				}
 				part2.append(node1);
 				part2.append("::");
-				part2.append(tgt.get(i));
+				part2.append(second.get(i));
 				part2.append(",");
 				part2.append(backwardsMapIndex.get(i));
 				part2.append("] ");
@@ -498,13 +515,18 @@ public class ParseNodeRulePart {
 	
 		String result = part1.toString().trim() + delim 
 		                + part2.toString().trim() + delim
-		                + reorderList;
+		                + reorderList.toString(sourceFirst);
 
 		return result;
 	}
 	
 	
-	public String getAlignTypeString() 
+	public String getAlignTypeString()
+	{
+		return getAlignTypeString(true);
+	}
+	
+	public String getAlignTypeString(boolean sourceFirst) 
 	{
 		String str = "";
 		
@@ -513,7 +535,8 @@ public class ParseNodeRulePart {
 		
 		for (int i = 0; i < src.size(); i++)
 		{
-			ParseNode node = src.get(i);
+			Integer node2Index = reorderList.fromSource(i).get(0);
+			ParseNode node = sourceFirst ? src.get(i) : tgt.get(node2Index);
 			if (!node.isTerminal() && 
 			    !(node instanceof NullParseNode))
 			{
@@ -525,10 +548,8 @@ public class ParseNodeRulePart {
 				{
 					str+= "V";
 				}
-				
-				Integer node2Index = reorderList.fromSource(i).get(0);
-				
-				ParseNode node2 = tgt.get(node2Index);
+			
+				ParseNode node2 = sourceFirst ? tgt.get(node2Index) : src.get(i);
 				
 				if (node2.isReal())
 				{

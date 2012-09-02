@@ -76,9 +76,19 @@ public class ReorderingList {
 	}
 
 	@Override
-	public String toString() 
+	public String toString()
 	{
+		return toString(true);
+	}
+	
+	public String toString(boolean sourceFirst)
+	{
+		// We must ensure that the links are printed in order
+		// sorted by first side value
 		String str = "";
+		
+		List<Integer> firstSides = new ArrayList<Integer>();
+		List<Integer> secondSides = new ArrayList<Integer>();
 		
 		for (int i = 0; i < reorderList.size(); i++)
 		{
@@ -86,10 +96,31 @@ public class ReorderingList {
 			{
 				for (Integer aligned : reorderList.get(i))
 				{
-					str += i + "-" + aligned + " ";
+					firstSides.add(sourceFirst ? i : aligned);
+					secondSides.add(sourceFirst ? aligned : i);
 				}
 			}
 		}
+		
+		for(int i = 0; i < firstSides.size(); i++)
+		{
+			for(int j = i + 1; j < firstSides.size(); j++)
+			{
+				if(firstSides.get(i) > firstSides.get(j))
+				{
+					int t = firstSides.get(i);
+					firstSides.set(i, firstSides.get(j));
+					firstSides.set(j, t);
+					
+					t = secondSides.get(i);
+					secondSides.set(i, secondSides.get(j));
+					secondSides.set(j, t);
+				}
+			}
+		}
+		
+		for(int i = 0; i < firstSides.size(); i++)
+			str += firstSides.get(i) + "-" + secondSides.get(i) + " ";
 
 		if (str.length() > 0)
 		{

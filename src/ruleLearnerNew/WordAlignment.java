@@ -23,6 +23,11 @@ public class WordAlignment
     // From a Moses-format Viterbi alignment string, e.g. "0-0 1-2 1-3":
     public WordAlignment(String mosesAligns) throws MalformedAlignmentException
     {
+    	this(mosesAligns, true);
+    }
+    
+    public WordAlignment(String mosesAligns, boolean sourceFirst) throws MalformedAlignmentException
+    {
         // Initialize empty alignment structures:
         fromSrc = new HashMap<Integer, Set<Integer>>();
         fromTgt = new HashMap<Integer, Set<Integer>>();
@@ -48,7 +53,10 @@ public class WordAlignment
             {
                 int src = Integer.parseInt(srcTgt[0]);
                 int tgt = Integer.parseInt(srcTgt[1]);
-                addLink(src, tgt);
+                if(sourceFirst)
+                	addLink(src, tgt);
+                else
+                	addLink(tgt, src);
             }
 			else
 			{

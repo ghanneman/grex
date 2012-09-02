@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -18,8 +19,8 @@ public class RuleLearner
 	{
 		// Check usage:
 		// TODO: Very dumb for now; add proper options, verification, etc.
-		int minArgs = 8;
-		int maxArgs = 11;
+		int minArgs = 9;
+		int maxArgs = 12;
 		if(args.length < minArgs || args.length > maxArgs)
 		{
 			System.err.println("Usage:");
@@ -29,6 +30,7 @@ public class RuleLearner
 					           + "<max-phrase-rule-size>"
 					           + "<allow-unary>"
 					           + "<allow-triangular> "
+					           + "<minimal-rules-only> "
 					           + "<max-virtual-node-components>"
 					           + "[<align-output-file>] " 
 					           + "[<startsent>] [<endsent>]");
@@ -70,7 +72,8 @@ public class RuleLearner
 		int maxPhraseRuleSize = Integer.parseInt(args[4]);
 		boolean allowUnary = Boolean.parseBoolean(args[5]);
 		boolean allowTriangular = Boolean.parseBoolean(args[6]);
-		int maxVirtualNodeComponents = Integer.parseInt(args[7]);
+		boolean minimalRulesOnly = Boolean.parseBoolean(args[7]);
+		int maxVirtualNodeComponents = Integer.parseInt(args[8]);
 		
 		String alignOutputFile = null;
 		
@@ -116,7 +119,8 @@ public class RuleLearner
 		BaseGrammarExtractor grammarExtractor = 
 			new BaseGrammarExtractor(maxGrammarRuleSize,
 									 maxPhraseRuleSize,
-									 allowTriangular);
+									 allowTriangular,
+									 minimalRulesOnly);
 		while((srcLine != null) && (tgtLine != null) && (alignLine != null))
 		{
 			if (startSent == null || startSent <= sentNum && endSent >= sentNum)
@@ -128,6 +132,7 @@ public class RuleLearner
 				ParseNode srcRoot = null;
 				ParseNode tgtRoot = null;
 				WordAlignment wordAligns = null;
+				WordAlignment reversedWordAligns = null;
 				try
 				{
 					srcRoot = new ParseNode(srcLine);
@@ -151,6 +156,7 @@ public class RuleLearner
 				try
 				{
 					wordAligns = new WordAlignment(alignLine);
+					reversedWordAligns = new WordAlignment(alignLine, false);
 				}
 				catch(MalformedAlignmentException e)
 				{
@@ -164,48 +170,20 @@ public class RuleLearner
 				if(!hadError)
 				{
 					// ************ ACTUAL MAIN WORK STARTS HERE ****************
-					// Align nodes:
-					NodeAlignmentList alignedNodes = 
-						nodeAligner.align(srcRoot, tgtRoot, wordAligns);
-	
-					if (alignOutputFile != null)
-					{
-						// Output
-						PrintWriter out;
-						try 
-						{
-							out = new PrintWriter(new FileWriter(alignOutputFile));
-							for (String aligned : alignedNodes.getInterchangeFormatStringList())
-							{
-								out.println(aligned);
-							}
-							out.close();
-						} catch (IOException e) {
-							System.err.println("Align output failed: " + e.getMessage());
-						}
-	
-					}
-					// Extract grammar:
-					Set<ExtractedRule> rules = 
-						grammarExtractor.extract(srcRoot, tgtRoot);
+					HashSet<String> forwardRules = extractFromSentencePair(allowUnary, alignOutputFile,
+							sentNum, nodeAligner, grammarExtractor, srcRoot,
+							tgtRoot, wordAligns, true);
 					
-					if (allowUnary)
-					{
-						for (ExtractedRule rule : rules)
-						{
-							System.out.println(rule.toString());
-						}
-					}
-					else
-					{
-						for (ExtractedRule rule : rules)
-						{
-							if (!rule.isParallelUnary())
-							{
-								System.out.println(rule);
-							}
-						}
-					}
+					HashSet<String> backwardRules = extractFromSentencePair(allowUnary, null,
+							sentNum, nodeAligner, grammarExtractor, tgtRoot,
+							srcRoot, reversedWordAligns, false);
+					
+					HashSet<String> allRules = new HashSet<String>();
+					allRules.addAll(forwardRules);
+					allRules.addAll(backwardRules);
+					
+					for(String rule : allRules)
+						System.out.println(rule);
 											
 					// **********************************************************
 				}
@@ -243,5 +221,48 @@ public class RuleLearner
 				System.exit(1);
 			}
 		}
+	}
+
+	private static HashSet<String> extractFromSentencePair(boolean allowUnary,
+			String alignOutputFile, int sentNum, VamshiNodeAligner nodeAligner,
+			BaseGrammarExtractor grammarExtractor, ParseNode srcRoot,
+			ParseNode tgtRoot, WordAlignment wordAligns, boolean sourceFirst) {
+		// Align nodes:
+		NodeAlignmentList alignedNodes = 
+			nodeAligner.align(srcRoot, tgtRoot, wordAligns);
+
+		if (alignOutputFile != null)
+		{
+			// Output
+			PrintWriter out;
+			try 
+			{
+				out = new PrintWriter(new FileWriter(alignOutputFile, (sentNum > 1)));
+				out.println(String.format("Sentence %d", sentNum));
+				for (String aligned : alignedNodes.getInterchangeFormatStringList())
+					out.println(aligned);
+				out.close();
+			} catch (IOException e) {
+				System.err.println("Align output failed: " + e.getMessage());
+			}
+
+		}
+		// Extract grammar:
+		Set<ExtractedRule> rules = 
+			grammarExtractor.extract(srcRoot, tgtRoot);
+		HashSet<String> ruleStrings = new HashSet<String>();
+		
+		for (ExtractedRule rule : rules)
+		{
+			if(allowUnary || !rule.isParallelUnary())
+			{
+				if(sourceFirst)
+					ruleStrings.add(rule.toString());
+				else
+					ruleStrings.add(rule.toReversedString());
+			}
+		}
+		
+		return ruleStrings;
 	}
 }

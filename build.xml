@@ -30,8 +30,8 @@
             -->
         </jar>
     </target>
-	<target name="compile" depends="">
+    <target name="compile" depends="">
         <!-- keep debugging on for backtraces -->
-		<javac compiler="javac1.5" srcdir="./src" destdir="./bin" classpath="./hadoop-0.20.1-core.jar" debug="on" encoding="utf8" />
-	</target>
+        <javac compiler="javac1.5" srcdir="./src" destdir="./bin" classpath="./hadoop-0.20.1-core.jar" debug="on" encoding="utf8" />
+    </target>
 </project>
