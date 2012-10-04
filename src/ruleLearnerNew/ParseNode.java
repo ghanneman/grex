@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,8 +109,12 @@ public class ParseNode implements Comparable<ParseNode>
 					childStart = n.spanEnd + 1;
 				}
 				
-				this.spanEnd = childStart -1;
-				this.generation = this.children.get(0).generation - 1;
+				int minChildGeneration = Integer.MAX_VALUE;
+				for(ParseNode child : children)
+					minChildGeneration = Math.min(minChildGeneration, child.generation);
+				
+				this.spanEnd = childStart - 1;
+				this.generation = minChildGeneration - 1;
 				
 				return;
 			}
@@ -182,6 +187,7 @@ public class ParseNode implements Comparable<ParseNode>
 		{
 			this.alignmentState = new NodeAlignmentState();
 		}
+		this.alignmentsMinimized = false;
 	}
 
 	/**
@@ -535,7 +541,6 @@ public class ParseNode implements Comparable<ParseNode>
 	 */
 	public void addNodeAlignment(NodeAlignmentType type, ParseNode aligned)
 	{		
-		isAligned = true;
 		Set<ParseNode> alignedNodes = alignedTo.get(type.getIndex());
 		if (alignedNodes == null)
 		{
@@ -543,6 +548,7 @@ public class ParseNode implements Comparable<ParseNode>
 			alignedTo.set(type.getIndex(), alignedNodes);
 		}
 		alignedNodes.add(aligned);
+		isAligned = true;
 	}
 
 
@@ -866,7 +872,8 @@ public class ParseNode implements Comparable<ParseNode>
 		return this.category.equals(otherNode.category) &&
 		       this.spanStart == otherNode.spanStart &&
 		       this.spanEnd == otherNode.spanEnd &&
-		       this.isTerminal() == otherNode.isTerminal();
+		       this.isTerminal() == otherNode.isTerminal() && 
+		       this.children == otherNode.children;
 	}
 	
 	public boolean isReal()
@@ -1045,10 +1052,10 @@ public class ParseNode implements Comparable<ParseNode>
 			Collection<NodeAlignmentType> types, boolean allowLhsNode,
 			boolean minimalRulesOnly, ParseNode lhsNode)
 	{	
-		if (rhsCollection != null)
-		{
-			return rhsCollection;
-		}
+		//if (rhsCollection != null)
+		//{
+			//return rhsCollection;
+		//}
 		
 		rhsCollection = new HashSet<ParseNodeRulePart>();
 
@@ -1065,7 +1072,9 @@ public class ParseNode implements Comparable<ParseNode>
 		}
 		
 		// Now add in the other things
-		for (ParseNode leftNode : getNodeAlignments(types))
+		Set<ParseNode> alignedNodes = getNodeAlignments(types);
+		
+		for (ParseNode leftNode : alignedNodes)
 		{
 			ParseNodeRulePart part =
 				new ParseNodeRulePart(this, leftNode, maxGrammar, maxPhrase, side1isSrc, false);
@@ -1075,7 +1084,7 @@ public class ParseNode implements Comparable<ParseNode>
 			}
 		}
 		
-		if (rhsCollection.isEmpty())
+		if (rhsCollection.isEmpty() && this.isTerminal())
 		{			
 			ParseNodeRulePart part =
 				new ParseNodeRulePart(this, new NullParseNode(), maxGrammar, 
@@ -1150,6 +1159,98 @@ public class ParseNode implements Comparable<ParseNode>
 		return rhsCollection;
 	}
 	
+	public void minimizeAlignments()
+	{
+		for(ParseNode child : this.getChildren())
+			child.minimizeAlignments();
+		
+		Set<ParseNode> allAlignedNodes = this.getNodeAlignments();
+		Set<ParseNode> minimalAlignments = this.getMinimalNodeAlignments(allAlignedNodes);
+		
+		Set<ParseNode> alignedForType = null;
+		for(int i = 0; i < alignedTo.size(); i++)
+		{
+			alignedForType = alignedTo.get(i);
+			if (alignedForType != null)
+			{
+				Set<ParseNode> minimized = new HashSet<ParseNode>();
+				for(ParseNode node : alignedForType)
+					if(minimalAlignments.contains(node))
+						minimized.add(node);
+				
+				if(minimized.size() > 0)
+					alignedTo.set(i, minimized);
+				else
+					alignedTo.set(i, null);
+			}
+		}
+		
+		for(ParseNode aligned : minimalAlignments)
+			aligned.alignmentsMinimized = true;
+		
+		if(minimalAlignments.size() == 0)
+			this.isAligned = false;
+		
+		this.alignmentsMinimized = true;
+	}
+	
+	public Set<ParseNode> getMinimalNodeAlignments(Set<ParseNode> allNodeAlignments)
+	{
+		// If any node above this one aligns to any node above the aligned Node, take the minimal alignment
+		// Otherwise, take the maximal target alignment		
+		// But if there's ambiguity in this node, then one aligned node must be a parent of the other(s)
+		
+		// Force root to align to root, and disallow anything else from aligning to the roots
+		if(this.getParent() == null)
+		{
+			Set<ParseNode> oppositeRoot = new HashSet<ParseNode>();
+			for(ParseNode aligned : allNodeAlignments)
+				if(aligned.getParent() == null)
+					oppositeRoot.add(aligned);
+			return oppositeRoot;
+		}
+		
+		int maxSpanSize = -1;
+		int minSpanSize = Integer.MAX_VALUE;
+		for(ParseNode aligned : allNodeAlignments)
+		{
+			int alignedSpan = aligned.getSpanEnd() - aligned.getSpanStart() + 1;
+			if(!aligned.alignmentsMinimized)
+			{
+				minSpanSize = Math.min(minSpanSize, alignedSpan);
+				maxSpanSize = Math.max(maxSpanSize, alignedSpan);
+			}
+		}
+		
+		int minGeneration = Integer.MAX_VALUE;
+		int maxGeneration = Integer.MIN_VALUE;
+		for(ParseNode aligned : allNodeAlignments)
+		{
+			if(!aligned.alignmentsMinimized)
+			{
+				minGeneration = Math.min(minGeneration, aligned.getGeneration());
+				maxGeneration = Math.max(maxGeneration, aligned.getGeneration());
+			}
+		}
+		
+		Set<ParseNode> minimalNodeAlignments = new HashSet<ParseNode>();
+		for(ParseNode aligned : allNodeAlignments)
+		{
+			int alignedSpan = aligned.getSpanEnd() - aligned.getSpanStart() + 1;
+			if(!aligned.alignmentsMinimized && alignedSpan == minSpanSize && aligned.getGeneration() == maxGeneration)
+				minimalNodeAlignments.add(aligned);
+		}
+	
+		// If this is not the root, remove any alignments to the opposing root
+		for(Iterator<ParseNode> it = minimalNodeAlignments.iterator(); it.hasNext();)
+		{
+			ParseNode aligned = it.next();
+			if(aligned.getParent() == null)
+				it.remove();
+		}
+		return minimalNodeAlignments;
+	}
+	
 	public String getNodeAlignCategory()
 	{
 		return "O";
@@ -1183,5 +1284,5 @@ public class ParseNode implements Comparable<ParseNode>
 	protected boolean isAligned = false;
 	
 	protected int generation;
-
+	protected boolean alignmentsMinimized;
 }

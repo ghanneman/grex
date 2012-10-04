@@ -437,6 +437,7 @@ public class VamshiNodeAligner implements NodeAligner
 		int projCovMin = node1.getMinSetInVector(VectorType.PROJ_COV);
 		int projCovMax = node1.getMaxSetInVector(VectorType.PROJ_COV) - 1;
 
+		// Handle one-to-many terminal alignments
 		if (node1.isTerminal() && projCovMax > projCovMin)
 		{
 			List<ParseNode> terminalNodes = 
@@ -741,7 +742,7 @@ public class VamshiNodeAligner implements NodeAligner
 		
 		if (end1 < 0)
 		{
-			System.out.println("negative");
+			System.err.println("negative");
 		}
 		
 		// Set alignment type(s):

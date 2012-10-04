@@ -49,6 +49,8 @@ public class BaseGrammarExtractor implements GrammarExtractor
 			types.add(type);
 		}
 		
+		if(minimalRulesOnly)
+			srcRoot.minimizeAlignments();
 		extractRulesForNode(srcRoot, true, rules, types, types);
 		
 		Set<ExtractedRule> oldRules = new HashSet<ExtractedRule>();
@@ -114,6 +116,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 		}
 		
 		Set<ParseNode> nodeAlignments = node1.getNodeAlignments(lhsTypes);
+		
 		for(ParseNode aligned : nodeAlignments)
 		{		
 			// Now we have to build the right hand-side of the rule,
@@ -139,7 +142,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 					ExtractedRule rule;	
 					Collection<ParseNodeRulePart> rhsSides = 
 						 getRhs(children, aligned, side1IsSrc, rhsTypes);
-
+					
 					for (ParseNodeRulePart rhs : rhsSides)
 					{	
 						if (rhs.spansMatch(node1, aligned) 
@@ -214,7 +217,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
                      allowTriangularRules,
                      minimalRulesOnly,
                      alignedNode);
-			
+
 			ParseNode nextGen = child1;
 			while (nextGen.numChildren() == 1 && !minimalRulesOnly)
 			{

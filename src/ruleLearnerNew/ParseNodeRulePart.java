@@ -40,7 +40,8 @@ public class ParseNodeRulePart {
 			intialize(part2, part1, fromSource);
 		}
 		
-		this.reorderList = new ReorderingList(srcPart, tgtPart, fromSource);
+		if(genReorderList)
+			this.reorderList = new ReorderingList(srcPart, tgtPart, fromSource);
 	}
 
 	private void intialize(ParseNode source, ParseNode target, 
@@ -80,11 +81,13 @@ public class ParseNodeRulePart {
 		
 		minSrcGeneration = source.getGeneration();
 		minTgtGeneration = target.getGeneration();
+		
+		sanityCheck();
 	}
 	
 	public boolean notOk()
 	{
-		if (tgtPart.size() > maxGrammarComponents || tgtPart.size()> maxPhraseComponents)
+		if (tgtPart.size() > maxGrammarComponents || tgtPart.size() > maxPhraseComponents)
 		{
 			return true;
 		}
@@ -109,6 +112,23 @@ public class ParseNodeRulePart {
 		
 		return false;
 	}
+	
+	public void sanityCheck()
+	{
+		List<ParseNode> sourceNonTerminals = new ArrayList<ParseNode>();
+		List<ParseNode> targetNonTerminals = new ArrayList<ParseNode>();
+		
+		for(ParseNode node : srcPart)
+			if(!node.isTerminal())
+				sourceNonTerminals.add(node);
+		
+		for(ParseNode node : tgtPart)
+			if(!node.isTerminal())
+				targetNonTerminals.add(node);
+		
+		if(sourceNonTerminals.size() != targetNonTerminals.size())
+			throw new RuntimeException();
+	}
 
 	public ParseNodeRulePart(List<ParseNode> srcPart, List<ParseNode> tgtPart, 
 							 int maxGrammarSize, int maxPhraseSize,
@@ -132,10 +152,11 @@ public class ParseNodeRulePart {
 		   		   tgtPart.get(tgtPart.size()-1).getSpanEnd());
 		this.srcPart = srcPart;
 		this.tgtPart = tgtPart;
-		
+	
 		this.minSrcGeneration = minSrcGeneration;
 		this.minTgtGeneration = minTgtGeneration;
 		
+		sanityCheck();
 		if (genReorderList)
 		{
 			this.reorderList = new ReorderingList(srcPart, tgtPart, fromSource);
@@ -225,10 +246,8 @@ public class ParseNodeRulePart {
 		removeNulls(left);
 		removeNulls(right);
 
-		if (!(left.tgtSpan.isNonOverlapping(right.tgtSpan)))
-		{
+		if ((left.tgtSpan.getStart() != -1 || right.tgtSpan.getStart() != -1) && !(left.tgtSpan.isNonOverlapping(right.tgtSpan)))
 			return null;
-		}
 		
 		ArrayList<ParseNode> newSrcRepresentation = new ArrayList<ParseNode>();
 		newSrcRepresentation.addAll(left.srcPart);
@@ -428,8 +447,8 @@ public class ParseNodeRulePart {
 				
 				int node1Index = (srcIndices == null) ? i : srcIndices.get(i);
 				int node2Index = (tgtIndices == null) ? i : tgtIndices.get(i);
-				ParseNode node1 = src.get(node1Index);
-				ParseNode node2 = tgt.get(node2Index);
+				ParseNode node1 = (node1Index != -1) ? src.get(node1Index) : null;
+				ParseNode node2 = (node2Index != -1) ? tgt.get(node2Index) : null;
 				
 				part.append(node1);
 				part.append("::");
@@ -472,7 +491,7 @@ public class ParseNodeRulePart {
 		for (int i = 0; i < src.size(); i++)
 		{
 			mapIndex.add(-1);
-			mapNodeIndex.add(-1);
+			mapNodeIndex.add(-1); 
 		}
 		
 		for (int i = 0; i < tgt.size(); i++)
@@ -494,7 +513,7 @@ public class ParseNodeRulePart {
 		
 		int cnt = 1; 
 		List<ParseNode> nodeSet = (sourceFirst) ? src : tgt;
-		for (int i = 0; i < nodeSet.size(); i++)
+ 		for (int i = 0; i < nodeSet.size(); i++)
 		{
 			ParseNode node = nodeSet.get(i);
 			if(!node.isTerminal() && !(node instanceof NullParseNode))
@@ -527,6 +546,100 @@ public class ParseNodeRulePart {
 		return result;
 	}
 	
+	 public String toStringOld(String delim)
+     {
+             int cnt = 1; 
+             StringBuilder part1 = new StringBuilder();
+             
+             List<ParseNode> src, tgt;
+             src = srcPart;
+             tgt = tgtPart;
+             
+             int size = Math.max(tgt.size(), src.size());
+             ArrayList<Integer> backwardsMapIndex = new ArrayList<Integer>(size);
+             ArrayList<Integer> backwardsMapNodeIndex = new ArrayList<Integer>(size);
+             
+             for (int i = 0; i < size; i++)
+             {
+                     backwardsMapIndex.add(-1);
+                     backwardsMapNodeIndex.add(-1);
+             }
+             
+             for (int i = 0; i < src.size(); i++)
+             {
+                     ParseNode node = src.get(i);
+                     if (node.isTerminal())
+                     {
+                             part1.append(node.getCategory());
+                             part1.append(" ");
+                     }
+                     else if (!(node instanceof NullParseNode))
+                     {
+                             part1.append('[');
+                             
+                             Integer node2Index = reorderList.fromSource(i).get(0);
+                             
+                             ParseNode node2 = tgt.get(node2Index);
+                             
+                             part1.append(src.get(i));
+                             part1.append("::");
+                             part1.append(node2);
+                             part1.append(',');
+                             part1.append(cnt);
+                             part1.append("] ");
+                             
+                             backwardsMapIndex.set(node2Index, cnt);
+                             backwardsMapNodeIndex.set(node2Index, i);
+                             cnt++;
+                     }
+             }
+
+        StringBuilder part2 = new StringBuilder();
+             
+             for (int i = 0; i < tgt.size(); i++)
+             {
+                     ParseNode node = tgt.get(i);
+                     
+                     if (node.isTerminal())
+                     {
+                             part2.append(node.getCategory());
+                             part2.append(' ');
+                     }
+                     else if (!(node instanceof NullParseNode))
+                     {
+                             part2.append('[');
+                             int node1Index = backwardsMapNodeIndex.get(i);
+                             ParseNode node1 = new NullParseNode();
+                             try
+                             {
+                                     node1 = src.get(node1Index);
+                             }
+                             catch(Exception e)
+                             {
+                                     System.err.println("exception");
+                             }
+                             part2.append(node1);
+                             part2.append("::");
+                             part2.append(tgt.get(i));
+                             part2.append(",");
+                             part2.append(backwardsMapIndex.get(i));
+                             part2.append("] ");
+                             cnt++;
+                     }
+             }
+     
+             String result = part1.toString().trim() + delim 
+                             + part2.toString().trim() + delim
+                             + reorderList;
+
+             return result;
+     }
+	 
+	 public String toShortString()
+	 {
+		 return this.srcPart.toString() + " ||| " + this.tgtPart.toString();
+	 }
+
 	
 	public String getAlignTypeString()
 	{

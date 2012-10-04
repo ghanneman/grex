@@ -6,7 +6,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -19,6 +21,8 @@ public class RuleLearner
 	{
 		// Check usage:
 		// TODO: Very dumb for now; add proper options, verification, etc.
+		// NOTE: Minimal rules only is single decomposition when max-virtual-node-components
+		// is set to one. Otherwise, multiple decompositions are possible!
 		int minArgs = 9;
 		int maxArgs = 12;
 		if(args.length < minArgs || args.length > maxArgs)
@@ -82,13 +86,14 @@ public class RuleLearner
 			alignOutputFile = args[minArgs];
 		}
 
-		Integer startSent = null;
-		Integer endSent = null;
+		Integer startSent = 1;
+		Integer endSent = Integer.MAX_VALUE;
 		
 		if (args.length > minArgs + 1)
 		{
 			startSent = Integer.parseInt(args[minArgs + 1]);
-			endSent = Integer.parseInt(args[minArgs + 2]);
+			if (args.length > minArgs + 2)
+				endSent = Integer.parseInt(args[minArgs + 2]);
 		}
 		// Read first lines of files:
 		int sentNum = 1;
@@ -123,7 +128,7 @@ public class RuleLearner
 									 minimalRulesOnly);
 		while((srcLine != null) && (tgtLine != null) && (alignLine != null))
 		{
-			if (startSent == null || startSent <= sentNum && endSent >= sentNum)
+			if ((startSent == null || startSent <= sentNum) && (endSent == null || endSent >= sentNum))
 			{
 				System.out.println("Sentence " + sentNum);
 				
@@ -169,23 +174,36 @@ public class RuleLearner
 				// this sentence and go to the next one:
 				if(!hadError)
 				{
-					// ************ ACTUAL MAIN WORK STARTS HERE ****************
-					HashSet<String> forwardRules = extractFromSentencePair(allowUnary, alignOutputFile,
-							sentNum, nodeAligner, grammarExtractor, srcRoot,
-							tgtRoot, wordAligns, true);
-					
-					HashSet<String> backwardRules = extractFromSentencePair(allowUnary, null,
-							sentNum, nodeAligner, grammarExtractor, tgtRoot,
-							srcRoot, reversedWordAligns, false);
-					
-					HashSet<String> allRules = new HashSet<String>();
-					allRules.addAll(forwardRules);
-					allRules.addAll(backwardRules);
-					
-					for(String rule : allRules)
-						System.out.println(rule);
-											
-					// **********************************************************
+					try
+					{
+						// ************ ACTUAL MAIN WORK STARTS HERE ****************
+						List<String> forwardRules = extractFromSentencePair(allowUnary, alignOutputFile,
+								sentNum, nodeAligner, grammarExtractor, srcRoot,
+								tgtRoot, wordAligns, true, startSent);
+						
+						// If we extract backwards, we have to dedup but this is difficult
+						// because the same rule can be extracted more than once from within one sentence.
+						//HashSet<String> backwardRules = extractFromSentencePair(allowUnary, null,
+						//		sentNum, nodeAligner, grammarExtractor, tgtRoot,
+						//		srcRoot, reversedWordAligns, false, startSent);
+						
+						List<String> allRules = new ArrayList<String>();
+						allRules.addAll(forwardRules);
+						//allRules.addAll(backwardRules);
+						
+						for(String rule : allRules)
+							System.out.println(rule);
+												
+						// **********************************************************
+					}
+					catch( Exception e )
+					{
+						System.err.println( "Error extracting rules from sentence #" + sentNum );
+						System.err.println( srcLine );
+						System.err.println( tgtLine );
+						System.err.println( alignLine );
+						throw new RuntimeException( e );
+					}
 				}
 			}
 			
@@ -223,10 +241,10 @@ public class RuleLearner
 		}
 	}
 
-	private static HashSet<String> extractFromSentencePair(boolean allowUnary,
+	private static List<String> extractFromSentencePair(boolean allowUnary,
 			String alignOutputFile, int sentNum, VamshiNodeAligner nodeAligner,
 			BaseGrammarExtractor grammarExtractor, ParseNode srcRoot,
-			ParseNode tgtRoot, WordAlignment wordAligns, boolean sourceFirst) {
+			ParseNode tgtRoot, WordAlignment wordAligns, boolean sourceFirst, int startSent) {
 		// Align nodes:
 		NodeAlignmentList alignedNodes = 
 			nodeAligner.align(srcRoot, tgtRoot, wordAligns);
@@ -237,7 +255,7 @@ public class RuleLearner
 			PrintWriter out;
 			try 
 			{
-				out = new PrintWriter(new FileWriter(alignOutputFile, (sentNum > 1)));
+				out = new PrintWriter(new FileWriter(alignOutputFile, (sentNum > startSent)));
 				out.println(String.format("Sentence %d", sentNum));
 				for (String aligned : alignedNodes.getInterchangeFormatStringList())
 					out.println(aligned);
@@ -250,7 +268,7 @@ public class RuleLearner
 		// Extract grammar:
 		Set<ExtractedRule> rules = 
 			grammarExtractor.extract(srcRoot, tgtRoot);
-		HashSet<String> ruleStrings = new HashSet<String>();
+		List<String> ruleStrings = new ArrayList<String>();
 		
 		for (ExtractedRule rule : rules)
 		{

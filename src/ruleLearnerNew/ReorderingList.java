@@ -57,6 +57,17 @@ public class ReorderingList {
 				}
 			}
 		}
+		
+		// Sanity check
+		for (int i = 0; i < srcNodes.size(); i++)
+		{
+			ParseNode node = srcNodes.get(i);
+			if(!node.isTerminal() && !(node instanceof NullParseNode))
+			{
+				if(this.fromSource(i) == null)
+					throw new RuntimeException();
+			}
+		}
 	}
 
 	public void insertReorder(int firstIndex, int secondIndex) 

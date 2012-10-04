@@ -48,14 +48,14 @@ public class NodeAlignmentList
 	public static enum NodeAlignmentType {
 		SRC_GROWN (1),
 		TGT_GROWN (2),
-	    T2T (4),
-		T2S (8),
-		S2T (16),
-		T2TS (32),
-		TS2T (64),
-		TS2TS (128),
-		T2P (256), // Terminal to phrase: Internal use only; DO NOT extract rules.
-		P2T (512); // Phrase to terminal
+	    T2T (4),   // Tree to tree
+		T2S (8),   // Tree to string
+		S2T (16),  // String to tree
+		T2TS (32),  // Tree to tree string
+		TS2T (64),  // Tree string to tree
+		TS2TS (128), // Tree string to tree string
+		T2P (256),   // Terminal to phrase: Internal use only; DO NOT extract rules.
+		P2T (512);   // Phrase to terminal
 		
 	    private final int typeVal;
 	    private final int index;
