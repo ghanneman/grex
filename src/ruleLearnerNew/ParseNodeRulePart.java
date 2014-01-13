@@ -40,15 +40,20 @@ public class ParseNodeRulePart {
 			intialize(part2, part1, fromSource);
 		}
 		
-		if(genReorderList)
+		if(genReorderList || true)
 			this.reorderList = new ReorderingList(srcPart, tgtPart, fromSource);
 	}
 
 	private void intialize(ParseNode source, ParseNode target, 
-						   boolean fromSource) 
-	{
-		srcSpan = new Span(source.getSpanStart(),source.getSpanEnd());
-		tgtSpan = new Span(target.getSpanStart(),target.getSpanEnd());
+						   boolean fromSource) {
+		coveredSrcWords = new HashSet<Integer>();
+		for (int i = source.getSpanStart(); i <= source.getSpanEnd(); ++i)
+			coveredSrcWords.add(i);
+
+		coveredTgtWords = new HashSet<Integer>();
+		for (int i = target.getSpanStart(); i <= target.getSpanEnd(); ++i)
+			coveredTgtWords.add(i);
+
 		
 		if (source.isString())
 		{
@@ -146,10 +151,18 @@ public class ParseNodeRulePart {
 		
 		this.fromSource = fromSource;
 		
-		srcSpan = new Span(srcPart.get(0).getSpanStart(),
-				   srcPart.get(srcPart.size()-1).getSpanEnd());
-		tgtSpan = new Span(tgtPart.get(0).getSpanStart(),
-		   		   tgtPart.get(tgtPart.size()-1).getSpanEnd());
+		coveredSrcWords = new HashSet<Integer>();
+		for (int i = 0; i < srcPart.size(); ++i) {
+			for (int j = srcPart.get(i).getSpanStart(); j <= srcPart.get(i).getSpanEnd(); ++j)
+				coveredSrcWords.add(j);
+		}
+
+		coveredTgtWords = new HashSet<Integer>();
+		for (int i = 0; i < tgtPart.size(); ++i) {
+			for (int j = tgtPart.get(i).getSpanStart(); j <= tgtPart.get(i).getSpanEnd(); ++j)
+				coveredTgtWords.add(j);
+		}
+
 		this.srcPart = srcPart;
 		this.tgtPart = tgtPart;
 	
@@ -157,7 +170,7 @@ public class ParseNodeRulePart {
 		this.minTgtGeneration = minTgtGeneration;
 		
 		sanityCheck();
-		if (genReorderList)
+		if (genReorderList || true)
 		{
 			this.reorderList = new ReorderingList(srcPart, tgtPart, fromSource);
 		}
@@ -191,14 +204,14 @@ public class ParseNodeRulePart {
 		return maxPhraseComponents;
 	}
 	
-	public Span getTgtSpan()
+	public Set<Integer> getTgtCoverage()
 	{
-		return tgtSpan;
+		return coveredTgtWords;
 	}
 	
-	public Span getSrcSpan()
+	public Set<Integer> getSrcCoverage()
 	{
-		return srcSpan;
+		return coveredSrcWords;
 	}
 	
 	public int getMinSrcGeneration()
@@ -227,14 +240,16 @@ public class ParseNodeRulePart {
 			tgt = node1;
 		}
 
-		// null node will always be first.
-		// if there is only the null node, well, then it's wrong!
-		// so figure something out with that.
-		return tgtSpan.getStart() == tgt.getSpanStart() &&
-			   tgtSpan.getEnd() == tgt.getSpanEnd() &&
-			   srcSpan.getStart() == src.getSpanStart() &&
-			   srcSpan.getEnd() == src.getSpanEnd();
-			
+		HashSet<Integer> srcCoverage = new HashSet<Integer>();
+		for (int i = src.getSpanStart(); i <= src.getSpanEnd(); ++i)
+			srcCoverage.add(i);
+
+		HashSet<Integer> tgtCoverage = new HashSet<Integer>();
+		for (int i = tgt.getSpanStart(); i <= tgt.getSpanEnd(); ++i)
+			tgtCoverage.add(i);
+
+		return coveredSrcWords.equals(srcCoverage) &&
+			coveredTgtWords.equals(tgtCoverage);	
 	}
 
 	public static ParseNodeRulePart combineParts(ParseNodeRulePart left, 
@@ -246,8 +261,11 @@ public class ParseNodeRulePart {
 		removeNulls(left);
 		removeNulls(right);
 
-		if ((left.tgtSpan.getStart() != -1 || right.tgtSpan.getStart() != -1) && !(left.tgtSpan.isNonOverlapping(right.tgtSpan)))
-			return null;
+		/*for (int i : left.coveredTgtWords) {
+			if (right.coveredTgtWords.contains(i)) {
+				//return null;
+			}
+		}*/
 		
 		ArrayList<ParseNode> newSrcRepresentation = new ArrayList<ParseNode>();
 		newSrcRepresentation.addAll(left.srcPart);
@@ -297,10 +315,11 @@ public class ParseNodeRulePart {
 		int minSrcGen = Math.min(right.minSrcGeneration, left.minSrcGeneration);
 		int minTgtGen = Math.min(right.minTgtGeneration, left.minTgtGeneration);
 		
-		return new ParseNodeRulePart(
+		ParseNodeRulePart result = new ParseNodeRulePart(
 				newSrcRepresentation, newTgtRepresentation,
 				left.maxGrammarComponents, left.maxPhraseComponents,
 				left.fromSource, isPhrase, minSrcGen, minTgtGen, genReorderList);
+		return result;
 	}
 	
 	public ParseNodeRulePart getWithUnalignedAdded(List<ParseNode> extraAligned)
@@ -317,6 +336,8 @@ public class ParseNodeRulePart {
 		part.srcPart.addAll(this.srcPart);
 		part.tgtPart = new ArrayList<ParseNode>();
 		part.tgtPart.addAll(this.tgtPart);
+		part.coveredSrcWords = this.coveredSrcWords;
+		part.coveredTgtWords = this.coveredTgtWords;
 		
 		addUncoveredTerminals(extraAligned, part.tgtPart);
 		int maxSize;
@@ -336,16 +357,9 @@ public class ParseNodeRulePart {
 		
 		Collections.sort(part.tgtPart);
 		
-
-		part.srcSpan = this.srcSpan;
-		if (part.tgtPart.size() > 0)
-		{
-			part.tgtSpan = new Span(part.tgtPart.get(0).spanStart, 
-				part.tgtPart.get(part.tgtPart.size() -1).spanEnd);
-		}
-		else
-		{
-			part.tgtSpan = this.tgtSpan;
+		for (ParseNode extra : extraAligned) {
+			for (int i = extra.getSpanStart(); i <= extra.getSpanEnd(); ++i)
+				part.coveredTgtWords.add(i);
 		}
 			
 		// get at the End.
@@ -699,8 +713,8 @@ public class ParseNodeRulePart {
 			}
 			equals = tgtPart.equals(rulePart.tgtPart);
 			return equals 
-			       && this.srcSpan.equals(rulePart.srcSpan)
-			       && this.tgtSpan.equals(rulePart.tgtSpan);
+				&& this.coveredSrcWords.equals(rulePart.coveredSrcWords)
+				&& this.coveredTgtWords.equals(rulePart.coveredTgtWords);
 		}
 		else
 		{
@@ -715,8 +729,8 @@ public class ParseNodeRulePart {
 		
 		hashCode += srcPart.hashCode();
 		hashCode = 31*hashCode + tgtPart.hashCode();
-		hashCode = 31*hashCode + srcSpan.hashCode();
-		hashCode = 31*hashCode + tgtSpan.hashCode();
+		hashCode = 31*hashCode + coveredSrcWords.hashCode();
+		hashCode = 31*hashCode + coveredTgtWords.hashCode();
 		
 		return hashCode;
 	}
@@ -728,9 +742,9 @@ public class ParseNodeRulePart {
 	private int maxGrammarComponents;
 	private int maxPhraseComponents;
 	private boolean fromSource;
-	
-	private Span srcSpan;
-	private Span tgtSpan;
+
+	private HashSet<Integer> coveredSrcWords;
+	private HashSet<Integer> coveredTgtWords;	
 	
 	private boolean isPhrase;
 	

@@ -1073,7 +1073,7 @@ public class ParseNode implements Comparable<ParseNode>
 		
 		// Now add in the other things
 		Set<ParseNode> alignedNodes = getNodeAlignments(types);
-		
+	
 		for (ParseNode leftNode : alignedNodes)
 		{
 			ParseNodeRulePart part =

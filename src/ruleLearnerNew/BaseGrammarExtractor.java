@@ -34,7 +34,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 	// FUNCTIONS: ///////////////////////////////////////////////////////////
 
 	public Set<ExtractedRule> extract(ParseNode srcRoot, ParseNode tgtRoot)
-	{
+	{	
 		Set<ExtractedRule> rules = new HashSet<ExtractedRule>();
 		
 		ArrayList<NodeAlignmentType> types = new ArrayList<NodeAlignmentType>();
@@ -83,7 +83,6 @@ public class BaseGrammarExtractor implements GrammarExtractor
 									Collection<NodeAlignmentType> rhsTypes)
 	{	
 		// Extract grammar rules from all this node's children:
-		
 		if (!node1.hasNoExtractedRules())
 		{
 			return;
@@ -116,6 +115,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 		}
 		
 		Set<ParseNode> nodeAlignments = node1.getNodeAlignments(lhsTypes);
+
 		
 		for(ParseNode aligned : nodeAlignments)
 		{		
@@ -132,7 +132,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 				node1.addRule(rule);
 			}
 			else
-			{	
+			{
 				for (List<ParseNode> children : childrenLists)
 				{
 					// TODO: We can check for many-to-one alignments here.
@@ -142,7 +142,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 					ExtractedRule rule;	
 					Collection<ParseNodeRulePart> rhsSides = 
 						 getRhs(children, aligned, side1IsSrc, rhsTypes);
-					
+	
 					for (ParseNodeRulePart rhs : rhsSides)
 					{	
 						if (rhs.spansMatch(node1, aligned) 
@@ -216,7 +216,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
                      types,
                      allowTriangularRules,
                      minimalRulesOnly,
-                     alignedNode);
+                     alignedNode);	
 
 			ParseNode nextGen = child1;
 			while (nextGen.numChildren() == 1 && !minimalRulesOnly)
@@ -264,7 +264,6 @@ public class BaseGrammarExtractor implements GrammarExtractor
 					for (ParseNodeRulePart expansion : subExpansions)
 					{
 						ParseNodeRulePart combined;
-						
 						if (allowTriangularRules || 
 							!expansion.contains(alignedNode, side1isSrc))
 						{
@@ -277,7 +276,7 @@ public class BaseGrammarExtractor implements GrammarExtractor
 							}
 							else
 								combined = base.combineWith(expansion, false);
-							
+
 							if (combined != null)
 								parts.add(combined);
 						}
