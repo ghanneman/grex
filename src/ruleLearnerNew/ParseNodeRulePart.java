@@ -51,7 +51,7 @@ public class ParseNodeRulePart {
 			coveredSrcWords.add(i);
 
 		coveredTgtWords = new HashSet<Integer>();
-		for (int i = target.getSpanStart(); i <= target.getSpanEnd(); ++i)
+		for (int i = target.getSpanStart(); i <= target.getSpanEnd() && i >= 0; ++i)
 			coveredTgtWords.add(i);
 
 		
@@ -159,7 +159,7 @@ public class ParseNodeRulePart {
 
 		coveredTgtWords = new HashSet<Integer>();
 		for (int i = 0; i < tgtPart.size(); ++i) {
-			for (int j = tgtPart.get(i).getSpanStart(); j <= tgtPart.get(i).getSpanEnd(); ++j)
+			for (int j = tgtPart.get(i).getSpanStart(); j <= tgtPart.get(i).getSpanEnd() && j >= 0; ++j)
 				coveredTgtWords.add(j);
 		}
 
@@ -261,11 +261,11 @@ public class ParseNodeRulePart {
 		removeNulls(left);
 		removeNulls(right);
 
-		/*for (int i : left.coveredTgtWords) {
+		for (int i : left.coveredTgtWords) {
 			if (right.coveredTgtWords.contains(i)) {
-				//return null;
+				return null;
 			}
-		}*/
+		}
 		
 		ArrayList<ParseNode> newSrcRepresentation = new ArrayList<ParseNode>();
 		newSrcRepresentation.addAll(left.srcPart);
@@ -358,7 +358,7 @@ public class ParseNodeRulePart {
 		Collections.sort(part.tgtPart);
 		
 		for (ParseNode extra : extraAligned) {
-			for (int i = extra.getSpanStart(); i <= extra.getSpanEnd(); ++i)
+			for (int i = extra.getSpanStart(); i <= extra.getSpanEnd() && i >= 0; ++i)
 				part.coveredTgtWords.add(i);
 		}
 			
