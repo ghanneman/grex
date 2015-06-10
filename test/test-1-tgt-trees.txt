@@ -1,2 +1,0 @@
-(Z (Y (X x) (W w) (V (U u) (T t))) (S (R (Q q) (P p)) (O o)))
-(Z (Y y) (X (W w) (V v)) (T t))
